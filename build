@@ -87,7 +87,7 @@ run() {
     compile
   fi
   log "-> running"
-  $buildDirectory/$executableFile
+  $buildDirectory/$executableFile $@
 }
 
 clean() {
