@@ -16,6 +16,9 @@ compile() {
 }
 
 run() {
+  if [[ ! -f "$buildDirectory/$executableFile" ]]; then
+    compile
+  fi
   echo "-> running"
   $buildDirectory/$executableFile
 }
@@ -52,7 +55,7 @@ if [[ $symlinkFilePath != $absoluteFilePath ]]; then
     echo "-> cleaning Symlink"
     rm $symlinkFilePath
   else
-    $symlinkFileName
+    $symlinkFileName $@
   fi
 fi
 
