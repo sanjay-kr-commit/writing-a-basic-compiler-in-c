@@ -3,6 +3,7 @@
 # configurable variables
 executableFile=compiler
 buildDirectory=buildDirectory
+src=src
 
 # polymorphic functions
 compile() {
@@ -14,15 +15,15 @@ compile() {
   changesDetected=""
   # compile object files if changes detected
   echo -e "\033[33m-> compiling object files\033[0m"
-  for file in $(ls src); do
+  for file in $(ls $src); do
     if [[ "$file" =~ $".c" ]]; then
-      if [[ ! -f "$buildDirectory/$file.hash" ]] || [[ "$(cat "$buildDirectory/$file.hash")" != "$(sha512sum "src/$file")" ]]; then
+      if [[ ! -f "$buildDirectory/$file.hash" ]] || [[ "$(cat "$buildDirectory/$file.hash")" != "$(sha512sum "$src/$file")" ]]; then
         echo -e "\033[33m-> Generating Object file : $file.o\033[0m"
-        echo -e "\033[33m-> gcc -c src/$file -o $buildDirectory/$file.o\033[0m"
-        val=$(gcc -c src/$file -o $buildDirectory/$file.o 1>&2 >/dev/tty)
+        echo -e "\033[33m-> gcc -c $src/$file -o $buildDirectory/$file.o\033[0m"
+        val=$(gcc -c $src/$file -o $buildDirectory/$file.o 1>&2 >/dev/tty)
         if [[ $val == "" ]]; then
           echo -e "\033[33m-> Generating Hash\033[0m"
-          sha512sum "src/$file" >"$buildDirectory/$file.hash"
+          sha512sum "$src/$file" >"$buildDirectory/$file.hash"
         else
           echo -e "\e[31m-> Object Generation Failed : $file.o \e[0m"
           exit -1
@@ -51,8 +52,8 @@ compile() {
 
 run() {
   changesDetected=""
-  for file in $(ls src); do
-    if [[ ! -f "$buildDirectory/$file.hash" ]] || [[ "$(cat "$buildDirectory/$file.hash")" != "$(sha512sum "src/$file")" ]]; then
+  for file in $(ls $src); do
+    if [[ ! -f "$buildDirectory/$file.hash" ]] || [[ "$(cat "$buildDirectory/$file.hash")" != "$(sha512sum "$src/$file")" ]]; then
       changesDetected="true"
     fi
   done
