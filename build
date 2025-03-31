@@ -10,8 +10,16 @@ compile() {
     echo "-> create build dir"
     mkdir $buildDirectory
   fi
+  inputFile=""
+  for file in $(ls src); do
+    if [[ $file =~ $".c" ]] || [[ $file =~ $".h" ]]; then
+      inputFile="$inputFile src/$file "
+    fi
+  done
   echo "-> compiling"
-  gcc src/main.c -o "$buildDirectory/$executableFile"
+  compileCommand="gcc $inputFile -o $buildDirectory/$executableFile"
+  echo "-> running : $compileCommand"
+  $compileCommand
   echo "-> compilation complete"
 }
 
