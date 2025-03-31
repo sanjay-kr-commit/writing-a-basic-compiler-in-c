@@ -86,15 +86,31 @@ functionNames=($(cat $absoluteFileName | pcregrep -o -M '#*.*\n[a-zA-Z0-9][a-zA-
 # move to script directory
 cd $scriptDirectory
 
-if [[ $symlinkFilePath == $absoluteFilePath ]]; then
-  # remove deleted function symlinks
+refreshSymlink() {
+  ./$absoluteFileName
+}
+
+deleteSymlink() {
+  for file in $(ls); do
+    if [[ -f $file ]] && [[ $file != $absoluteFileName ]] && [[ "$(realpath $file | rev | grep -o "[^/]*" | head -1 | rev)" == $absoluteFileName ]]; then
+      echo -e "\033[33m-> rm $file -> $(realpath $file)\033[0m"
+      rm $file
+    fi
+  done
+}
+
+#private
+removeSymlinks() {
   for file in $(ls); do
     if [[ -f $file ]] && [[ $file != $absoluteFileName ]] && [[ "$(realpath $file | rev | grep -o "[^/]*" | head -1 | rev)" == $absoluteFileName ]] && [[ ! ${functionNames[*]} =~ "$file" ]]; then
       echo -e "\033[33m-> rm $file -> $(realpath $file)\033[0m"
       rm $file
     fi
   done
-  # create new symlinks
+}
+
+#private
+addSymlinks() {
   for function in ${functionNames[@]}; do
     if [[ ! -f $function ]] && [[ $function != "" ]]; then
       echo -e "\033[33m-> creating symlink : \"$function\" -> $absoluteFileName\033[0m"
@@ -102,6 +118,13 @@ if [[ $symlinkFilePath == $absoluteFilePath ]]; then
       chmod +x "$scriptDirectory$function"
     fi
   done
+}
+
+if [[ $symlinkFilePath == $absoluteFilePath ]]; then
+  # remove deleted function symlinks
+  removeSymlinks
+  # create new symlinks
+  addSymlinks
   echo -e "\033[33m-> these function are callable : ${functionNames[@]}\033[0m"
   exit
 fi
