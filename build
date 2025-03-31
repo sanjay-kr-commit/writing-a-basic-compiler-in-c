@@ -29,6 +29,15 @@ logAssembled() {
   cat "$buildDirectory/$executableFile.s" | less
 }
 
+#private
+containsMainFunction() {
+  if [[ "$(cat $1 | grep -o "int *main(.*)")" != "" ]]; then
+    echo "main"
+  else
+    echo "normal"
+  fi
+}
+
 # polymorphic functions
 compile() {
   if [[ ! -d $buildDirectory ]]; then
@@ -37,6 +46,7 @@ compile() {
   fi
   objectFileList=""
   changesDetected=""
+  mainfilelist=""
   # compile object files if changes detected
   log "-> compiling object files"
   for file in $(ls $src); do
@@ -57,9 +67,59 @@ compile() {
       else
         log "-> No Changes Detected Skipping Object File Generation : $file"
       fi
-      objectFileList="$objectFileList $buildDirectory/$file.o"
+      if [[ "$(containsMainFunction "$src/$file")" == "main" ]]; then
+        mainfilelist="$mainfilelist $buildDirectory/$file.o"
+      else
+        objectFileList="$objectFileList $buildDirectory/$file.o"
+      fi
     fi
   done
+  mainfilelist=($mainfilelist)
+  mainfilenamesupplied=("$(echo "$@" | grep -o "\-mf *src/[a-zA-Z0-9_]*\.c" | sed 's/\-mf *//g' | sed 'N; s/\n/ /g' | sed "s/$src/$buildDirectory/g")")
+  mainfilenamesuppliedCount="$(echo ${mainfilenamesupplied[@]} | wc -w)"
+  if [[ $mainfilenamesuppliedCount != "0" ]]; then
+    case $mainfilenamesuppliedCount in
+    "1")
+      if [[ "${mainfilelist[@]}" =~ "${mainfilenamesupplied[0]}.o" ]]; then
+        objectFileList="$objectFileList ${mainfilenamesupplied[0]}.o"
+      else
+        logError "-> supplied -mf file \"$(echo "${mainfilenamesupplied[0]}" | sed "s/$buildDirectory/$src/g")\" not found"
+        exit -1
+      fi
+      ;;
+    *)
+      logError "-> -mf argument should be passed only once"
+      exit -1
+      ;;
+    esac
+  else
+    case "${#mainfilelist[@]}" in
+    "0")
+      logError "-> no file containing main function found"
+      exit -1
+      ;;
+    "1")
+      objectFileList="$objectFileList ${mainfilelist[0]}"
+      ;;
+    *)
+      log "-> Manual Intervention Required"
+      log "-> More than one file containing main function found"
+      log "-> $(echo "${mainfilelist[@]}" | sed 's/ \([a-zA-Z0-9]\)/ \"\1/g' | sed 's/\([a-zA-Z0-9]\) /\1\" /g' | sed 's/\(^[a-zA-Z0-9]\)/\"\1/g' | sed 's/\([a-zA-Z0-9]$\)/\1\"/g')"
+      log "-> Enter index : \c"
+      read index
+      if [[ $index -lt 0 ]]; then
+        logError "-> Index Underflowed for \"$index\""
+        exit -1
+      fi
+      len="$(echo ${mainfilelist[@]} | wc -w)"
+      if [[ $index -gt $len ]] || [[ $index == $len ]]; then
+        logError "-> Index Overflowed for \"$index\""
+        exit -1
+      fi
+      objectFileList="$objectFileList ${mainfilelist[$index]}"
+      ;;
+    esac
+  fi
   if [[ "$changesDetected" == "true" ]]; then
     log "-> compiling executable : linking files"
     linkingCommand="gcc $objectFileList -o $buildDirectory/$executableFile"
