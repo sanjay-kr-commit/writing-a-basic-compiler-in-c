@@ -20,11 +20,12 @@ compile() {
       if [[ ! -f "$buildDirectory/$file.hash" ]] || [[ "$(cat "$buildDirectory/$file.hash")" != "$(sha512sum "$src/$file")" ]]; then
         log "-> Generating Object file : $file.o"
         log "-> gcc -c $src/$file -o $buildDirectory/$file.o"
-        val=$(gcc -c $src/$file -o $buildDirectory/$file.o 1>&2 >/dev/tty)
-        if [[ $val == "" ]]; then
+        output=$(gcc -c $src/$file -o $buildDirectory/$file.o 2>&1 1>/dev/tty >/dev/null)
+        if [[ $(echo $output | grep "error") == "" ]]; then
           log "-> Generating Hash"
           sha512sum "$src/$file" >"$buildDirectory/$file.hash"
         else
+          logError $output
           logError "-> Object Generation Failed : $file.o"
           exit -1
         fi
@@ -39,8 +40,9 @@ compile() {
     log "-> compiling executable : linking files"
     linkingCommand="gcc $objectFileList -o $buildDirectory/$executableFile"
     log "-> running : $linkingCommand"
-    val=$($linkingCommand 1>&2 >/dev/tty)
-    if [[ $val != "" ]]; then
+    output=$($linkingCommand 2>&1 1>/dev/tty >/dev/null)
+    if [[ $(echo $output | grep "error") != "" ]]; then
+      logError $output
       logError "-> linking failed : $file.o"
       exit -1
     fi
