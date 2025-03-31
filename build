@@ -86,16 +86,6 @@ functionNames=($(cat $absoluteFileName | pcregrep -o -M '#*.*\n[a-zA-Z0-9][a-zA-
 # move to script directory
 cd $scriptDirectory
 
-if [[ $symlinkFilePath != $absoluteFilePath ]]; then
-  if [[ ! "${functionNames[*]}" =~ $symlinkFileName ]]; then
-    echo -e "\033[33m-> function not found : $symlinkFileName\033[0m"
-    echo -e "\033[33m-> cleaning Symlink\033[0m"
-    rm $symlinkFilePath
-  else
-    $symlinkFileName $@
-  fi
-fi
-
 if [[ $symlinkFilePath == $absoluteFilePath ]]; then
   # remove deleted function symlinks
   for file in $(ls); do
@@ -114,4 +104,15 @@ if [[ $symlinkFilePath == $absoluteFilePath ]]; then
   done
   echo -e "\033[33m-> these function are callable : ${functionNames[@]}\033[0m"
   exit
+fi
+
+# this code should be at the bottom of the file
+if [[ $symlinkFilePath != $absoluteFilePath ]]; then
+  if [[ ! "${functionNames[*]}" =~ $symlinkFileName ]]; then
+    echo -e "\033[33m-> function not found : $symlinkFileName\033[0m"
+    echo -e "\033[33m-> cleaning Symlink\033[0m"
+    rm $symlinkFilePath
+  else
+    $symlinkFileName $@
+  fi
 fi
