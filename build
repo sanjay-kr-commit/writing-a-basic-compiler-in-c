@@ -8,46 +8,46 @@ src=src
 # polymorphic functions
 compile() {
   if [[ ! -d $buildDirectory ]]; then
-    echo -e "\033[33m-> create build dir\033[0m"
+    log "-> create build dir"
     mkdir $buildDirectory
   fi
   objectFileList=""
   changesDetected=""
   # compile object files if changes detected
-  echo -e "\033[33m-> compiling object files\033[0m"
+  log "-> compiling object files"
   for file in $(ls $src); do
     if [[ "$file" =~ $".c" ]]; then
       if [[ ! -f "$buildDirectory/$file.hash" ]] || [[ "$(cat "$buildDirectory/$file.hash")" != "$(sha512sum "$src/$file")" ]]; then
-        echo -e "\033[33m-> Generating Object file : $file.o\033[0m"
-        echo -e "\033[33m-> gcc -c $src/$file -o $buildDirectory/$file.o\033[0m"
+        log "-> Generating Object file : $file.o"
+        log "-> gcc -c $src/$file -o $buildDirectory/$file.o"
         val=$(gcc -c $src/$file -o $buildDirectory/$file.o 1>&2 >/dev/tty)
         if [[ $val == "" ]]; then
-          echo -e "\033[33m-> Generating Hash\033[0m"
+          log "-> Generating Hash"
           sha512sum "$src/$file" >"$buildDirectory/$file.hash"
         else
-          echo -e "\e[31m-> Object Generation Failed : $file.o \e[0m"
+          logError "-> Object Generation Failed : $file.o"
           exit -1
         fi
         changesDetected="true"
       else
-        echo -e "\033[33m-> No Changes Detected Skipping Object File Generation : $file\033[0m"
+        log "-> No Changes Detected Skipping Object File Generation : $file"
       fi
       objectFileList="$objectFileList $buildDirectory/$file.o"
     fi
   done
   if [[ "$changesDetected" == "true" ]]; then
-    echo -e "\033[33m-> compiling executable : linking files\033[0m"
+    log "-> compiling executable : linking files"
     linkingCommand="gcc $objectFileList -o $buildDirectory/$executableFile"
-    echo -e "\033[33m-> running : $linkingCommand\033[0m"
+    log "-> running : $linkingCommand"
     val=$($linkingCommand 1>&2 >/dev/tty)
     if [[ $val != "" ]]; then
-      echo -e "\e[31m-> linking failed : $file.o \e[0m"
+      logError "-> linking failed : $file.o"
       exit -1
     fi
   else
-    echo -e "\033[33m-> No Changes detect linking skipped\033[0m"
+    log "-> No Changes detect linking skipped"
   fi
-  echo -e "\033[33m-> compilation complete\033[0m"
+  log "-> compilation complete"
 }
 
 run() {
@@ -60,12 +60,12 @@ run() {
   if [[ ! -f "$buildDirectory/$executableFile" ]] || [[ changesDetected == "true" ]]; then
     compile
   fi
-  echo -e "\033[33m-> running\033[0m"
+  log "-> running"
   $buildDirectory/$executableFile
 }
 
 clean() {
-  echo -e "\033[33m-> cleaning\033[0m"
+  log "-> cleaning"
   if [[ -d $buildDirectory ]]; then
     rm -r $buildDirectory
   fi
@@ -86,6 +86,16 @@ functionNames=($(cat $absoluteFileName | pcregrep -o -M '#*.*\n[a-zA-Z0-9][a-zA-
 # move to script directory
 cd $scriptDirectory
 
+#private
+log() {
+  echo -e "\033[33m$@\033[0m"
+}
+
+#private
+logError() {
+  echo -e "\e[31m$@\e[0m"
+}
+
 refreshSymlink() {
   ./$absoluteFileName
 }
@@ -93,7 +103,7 @@ refreshSymlink() {
 deleteSymlink() {
   for file in $(ls); do
     if [[ -f $file ]] && [[ $file != $absoluteFileName ]] && [[ "$(realpath $file | rev | grep -o "[^/]*" | head -1 | rev)" == $absoluteFileName ]]; then
-      echo -e "\033[33m-> rm $file -> $(realpath $file)\033[0m"
+      log "-> rm $file -> $(realpath $file)"
       rm $file
     fi
   done
@@ -103,7 +113,7 @@ deleteSymlink() {
 removeSymlinks() {
   for file in $(ls); do
     if [[ -f $file ]] && [[ $file != $absoluteFileName ]] && [[ "$(realpath $file | rev | grep -o "[^/]*" | head -1 | rev)" == $absoluteFileName ]] && [[ ! ${functionNames[*]} =~ "$file" ]]; then
-      echo -e "\033[33m-> rm $file -> $(realpath $file)\033[0m"
+      log "-> rm $file -> $(realpath $file)"
       rm $file
     fi
   done
@@ -113,7 +123,7 @@ removeSymlinks() {
 addSymlinks() {
   for function in ${functionNames[@]}; do
     if [[ ! -f $function ]] && [[ $function != "" ]]; then
-      echo -e "\033[33m-> creating symlink : \"$function\" -> $absoluteFileName\033[0m"
+      log "-> creating symlink : \"$function\" -> $absoluteFileName"
       ln -s $absoluteFilePath "$scriptDirectory$function"
       chmod +x "$scriptDirectory$function"
     fi
@@ -125,15 +135,15 @@ if [[ $symlinkFilePath == $absoluteFilePath ]]; then
   removeSymlinks
   # create new symlinks
   addSymlinks
-  echo -e "\033[33m-> these function are callable : ${functionNames[@]}\033[0m"
+  log "-> these function are callable : ${functionNames[@]}"
   exit
 fi
 
 # this code should be at the bottom of the file
 if [[ $symlinkFilePath != $absoluteFilePath ]]; then
   if [[ ! "${functionNames[*]}" =~ $symlinkFileName ]]; then
-    echo -e "\033[33m-> function not found : $symlinkFileName\033[0m"
-    echo -e "\033[33m-> cleaning Symlink\033[0m"
+    log "-> function not found : $symlinkFileName"
+    log "-> cleaning Symlink"
     rm $symlinkFilePath
   else
     $symlinkFileName $@
