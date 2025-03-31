@@ -7,32 +7,64 @@ buildDirectory=buildDirectory
 # polymorphic functions
 compile() {
   if [[ ! -d $buildDirectory ]]; then
-    echo "-> create build dir"
+    echo -e "\033[33m-> create build dir\033[0m"
     mkdir $buildDirectory
   fi
-  inputFile=""
+  objectFileList=""
+  changesDetected=""
+  # compile object files if changes detected
+  echo -e "\033[33m-> compiling object files\033[0m"
   for file in $(ls src); do
-    if [[ $file =~ $".c" ]] || [[ $file =~ $".h" ]]; then
-      inputFile="$inputFile src/$file "
+    if [[ "$file" =~ $".c" ]]; then
+      if [[ ! -f "$buildDirectory/$file.hash" ]] || [[ "$(cat "$buildDirectory/$file.hash")" != "$(sha512sum "src/$file")" ]]; then
+        echo -e "\033[33m-> Generating Object file : $file.o\033[0m"
+        echo -e "\033[33m-> gcc -c src/$file -o $buildDirectory/$file.o\033[0m"
+        val=$(gcc -c src/$file -o $buildDirectory/$file.o 1>&2 >/dev/tty)
+        if [[ $val == "" ]]; then
+          echo -e "\033[33m-> Generating Hash\033[0m"
+          sha512sum "src/$file" >"$buildDirectory/$file.hash"
+        else
+          echo -e "\e[31m-> Object Generation Failed : $file.o \e[0m"
+          exit -1
+        fi
+        changesDetected="true"
+      else
+        echo -e "\033[33m-> No Changes Detected Skipping Object File Generation : $file\033[0m"
+      fi
+      objectFileList="$objectFileList $buildDirectory/$file.o"
     fi
   done
-  echo "-> compiling"
-  compileCommand="gcc $inputFile -o $buildDirectory/$executableFile"
-  echo "-> running : $compileCommand"
-  $compileCommand
-  echo "-> compilation complete"
+  if [[ "$changesDetected" == "true" ]]; then
+    echo -e "\033[33m-> compiling executable : linking files\033[0m"
+    linkingCommand="gcc $objectFileList -o $buildDirectory/$executableFile"
+    echo -e "\033[33m-> running : $linkingCommand\033[0m"
+    val=$($linkingCommand 1>&2 >/dev/tty)
+    if [[ $val != "" ]]; then
+      echo -e "\e[31m-> linking failed : $file.o \e[0m"
+      exit -1
+    fi
+  else
+    echo -e "\033[33m-> No Changes detect linking skipped\033[0m"
+  fi
+  echo -e "\033[33m-> compilation complete\033[0m"
 }
 
 run() {
-  if [[ ! -f "$buildDirectory/$executableFile" ]]; then
+  changesDetected=""
+  for file in $(ls src); do
+    if [[ ! -f "$buildDirectory/$file.hash" ]] || [[ "$(cat "$buildDirectory/$file.hash")" != "$(sha512sum "src/$file")" ]]; then
+      changesDetected="true"
+    fi
+  done
+  if [[ ! -f "$buildDirectory/$executableFile" ]] || [[ changesDetected == "true" ]]; then
     compile
   fi
-  echo "-> running"
+  echo -e "\033[33m-> running\033[0m"
   $buildDirectory/$executableFile
 }
 
 clean() {
-  echo "-> cleaning"
+  echo -e "\033[33m-> cleaning\033[0m"
   if [[ -d $buildDirectory ]]; then
     rm -r $buildDirectory
   fi
@@ -59,8 +91,8 @@ cd $scriptDirectory
 
 if [[ $symlinkFilePath != $absoluteFilePath ]]; then
   if [[ ! "${functionNames[*]}" =~ $symlinkFileName ]]; then
-    echo "-> function not found : $symlinkFileName"
-    echo "-> cleaning Symlink"
+    echo -e "\033[33m-> function not found : $symlinkFileName\033[0m"
+    echo -e "\033[33m-> cleaning Symlink\033[0m"
     rm $symlinkFilePath
   else
     $symlinkFileName $@
@@ -71,18 +103,18 @@ if [[ $symlinkFilePath == $absoluteFilePath ]]; then
   # remove deleted function symlinks
   for file in $(ls); do
     if [[ -f $file ]] && [[ $file != $absoluteFileName ]] && [[ "$(realpath $file | rev | grep -o "[^/]*" | head -1 | rev)" == $absoluteFileName ]] && [[ ! ${functionNames[*]} =~ "$file" ]]; then
-      echo "-> rm $file -> $(realpath $file)"
+      echo -e "\033[33m-> rm $file -> $(realpath $file)\033[0m"
       rm $file
     fi
   done
   # create new symlinks
   for function in ${functionNames[@]}; do
     if [[ ! -f $function ]] && [[ $function != "" ]]; then
-      echo "-> creating symlink : \"$function\" -> $absoluteFileName"
+      echo -e "\033[33m-> creating symlink : \"$function\" -> $absoluteFileName\033[0m"
       ln -s $absoluteFilePath "$scriptDirectory$function"
       chmod +x "$scriptDirectory$function"
     fi
   done
-  echo "-> these function are callable : ${functionNames[@]}"
+  echo -e "\033[33m-> these function are callable : ${functionNames[@]}\033[0m"
   exit
 fi

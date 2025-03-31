@@ -3,5 +3,6 @@
 #define HELLO_H
 
 void hello();
+void hi();
 
 #endif
