@@ -71,10 +71,6 @@ clean() {
   fi
 }
 
-#hello() {
-#  echo Hello
-#}
-
 # Code Below is responsible for generating and cleaning symlink as well as making the function callable ################
 ########################################################################################################################
 
@@ -86,7 +82,7 @@ scriptDirectory="$(realpath build | rev | grep -o "/.*" | rev)"
 symlinkFilePath="$scriptDirectory$symlinkFileName"
 # grep all the function present inside the script
 # that strictly follows variable names
-functionNames=($(cat $absoluteFileName | grep -o "#* *[a-zA-Z0-9][a-zA-Z0-9]*[(]" | sed 's/(//g' | grep -o "^[a-zA-Z0-9].*"))
+functionNames=($(cat $absoluteFileName | pcregrep -o -M '#*.*\n[a-zA-Z0-9][a-zA-Z0-9]*[(]' | sed 'N;s/#.*private\n.*//g' | sed 's/(//g' | grep -o "^[a-zA-Z0-9].*"))
 # move to script directory
 cd $scriptDirectory
 
