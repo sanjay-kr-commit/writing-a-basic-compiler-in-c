@@ -6,6 +6,30 @@ buildDirectory=buildDirectory
 src=src
 
 # polymorphic functions
+assemble() {
+  log "-> assembling"
+  if [[ ! -d $buildDirectory ]]; then
+    log "-> create build dir"
+    mkdir $buildDirectory
+  fi
+  sourceFile=""
+  for i in $(ls src); do
+    if [[ $i =~ $".c" ]]; then
+      sourceFile="$sourceFile src/$i"
+    fi
+  done
+  # compile object files if changes detected
+  gcc -S $sourceFile -o "$buildDirectory/$executableFile.s"
+}
+
+logAssembled() {
+  if [[ ! -f "$buildDirectory/$executableFile.s" ]]; then
+    assemble
+  fi
+  cat "$buildDirectory/$executableFile.s" | less
+}
+
+# polymorphic functions
 compile() {
   if [[ ! -d $buildDirectory ]]; then
     log "-> create build dir"
