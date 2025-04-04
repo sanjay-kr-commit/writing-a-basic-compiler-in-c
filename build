@@ -4,6 +4,7 @@
 executableFile=compiler
 buildDirectory=buildDirectory
 src=src
+compilerOption="-o3"
 
 # polymorphic functions
 assemble() {
@@ -122,7 +123,7 @@ compile() {
   fi
   if [[ "$changesDetected" == "true" ]]; then
     log "-> compiling executable : linking files"
-    linkingCommand="gcc $objectFileList -o $buildDirectory/$executableFile"
+    linkingCommand="gcc $compilerOption $objectFileList -o $buildDirectory/$executableFile"
     log "-> running : $linkingCommand"
     output=$($linkingCommand 2>&1 1>/dev/tty >/dev/null)
     if [[ $(echo $output | grep "error") != "" ]]; then
